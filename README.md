@@ -3,7 +3,7 @@
 Juego para practicar la prueba de ciencias de 2° básico: los estados del agua
 (sólido, líquido y gaseoso), sus cambios y por qué hay que cuidarla.
 
-**Jugar:** https://gonzaloigb.github.io/ev-ciencias-28-09-26/
+**Jugar:** https://gonzaloigb.github.io/ev-ciencias-estados-del-agua-28-09-26/
 
 ## Qué trae
 
