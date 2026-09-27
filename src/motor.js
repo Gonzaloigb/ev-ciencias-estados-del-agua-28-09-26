@@ -10,9 +10,10 @@
  *  - Modo dificil: tres vidas por zona. Al perderlas, la zona vuelve a empezar.
  */
 
-import { el, esperar, estrellasPorPuntaje, confeti, pintarEstrellas } from './util.js';
+import { el, esperar, estrellasPorPuntaje, confeti, pintarEstrellas, uno } from './util.js';
 import { sonarBien, sonarMal, sonarVictoria, sonarEstrella } from './audio.js';
 import { guardarEstrellas, registrar } from './estado.js';
+import { crearMascota, crearRacha, animarRespuesta, FRASES } from './vida.js';
 import { MODOS, modo as modoDe } from './modos.js';
 
 /**
@@ -60,7 +61,12 @@ export function correrZona(cfg) {
   const aviso = el('div', 'aviso');
   tablero.append(consigna, zonaJuego, aviso);
 
-  pantalla.append(barra, tablero);
+  // La vida del juego: acompana y celebra, sin cambiar lo que se evalua.
+  const mascota = crearMascota();
+  const racha = crearRacha();
+  barra.append(racha.nodo);
+
+  pantalla.append(barra, tablero, mascota.nodo);
   raiz.replaceChildren(pantalla);
 
   btnVolver.addEventListener('click', onSalir);
@@ -74,6 +80,9 @@ export function correrZona(cfg) {
   const ctx = {
     consigna,
     zonaJuego,
+    // Para que una zona pueda animar el boton que se toco.
+    animar: animarRespuesta,
+    mascota,
     modo: m.id,
     // Las zonas preguntan esto para decidir cuantas alternativas ofrecer.
     ayuda,
@@ -98,11 +107,26 @@ export function correrZona(cfg) {
       if (acerto) {
         aciertos += 1;
         sonarBien();
+
+        // La racha premia la constancia, no el resultado final: se puede ir mal
+        // en la zona y aun asi encadenar tres buenas.
+        const subio = racha.sumar();
+        const n = racha.cuenta();
+        const frase = subio
+          ? uno(FRASES[`racha${n}`] || FRASES.bien)
+          : uno(FRASES.bien);
+        mascota.reaccionar('feliz', frase);
+
         aviso.className = 'aviso bien';
         aviso.textContent = mensajeBien || '¡Muy bien! 🎉';
       } else {
         fallos.push(concepto);
         sonarMal();
+        racha.romper();
+        // La pista manda sobre la mascota: una pista que no se ve no ensena
+        // nada. Mientras esta en pantalla, la mascota se aparta.
+        if (pista && ayuda) pantalla.classList.add('con-pista');
+        mascota.reaccionar('triste', (pista && ayuda) ? '' : uno(FRASES.mal));
         vidas -= 1;
         pintarVidas();
         aviso.className = 'aviso mal';
@@ -122,6 +146,7 @@ export function correrZona(cfg) {
       await esperar(acerto ? 1100 : (ayuda ? 2900 : 1100));
       aviso.className = 'aviso';
       aviso.replaceChildren();
+      pantalla.classList.remove('con-pista');
 
       // Modo dificil: sin vidas, la zona vuelve a empezar.
       if (m.vidas > 0 && vidas <= 0) return sinVidas();
@@ -149,6 +174,7 @@ export function correrZona(cfg) {
   function reiniciar() {
     indice = 0;
     aciertos = 0;
+    racha.romper();
     vidas = m.vidas;
     fallos.length = 0;
     raiz.replaceChildren(pantalla);
@@ -216,6 +242,7 @@ export function correrZona(cfg) {
     tablero.replaceChildren(fiesta);
 
     if (bien) {
+      mascota.reaccionar('feliz', '¡Lo lograste!', 3000);
       sonarVictoria();
       confeti(70);
       for (let i = 0; i < estrellas; i++) {
